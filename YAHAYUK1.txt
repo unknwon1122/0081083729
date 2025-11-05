@@ -1,0 +1,383 @@
+--// 💎 Jarot Xploit Summit GUI v13 VVIP (Full Version + Drag + Tombol Rapih + Scroll CP) 💀
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+--// Data teleport
+local teleportList = {
+    Vector3.new(-417.62, 251.38, 786.58),
+    Vector3.new(-337.29, 390.38, 524.49),
+    Vector3.new(292.86, 432.00, 494.39),
+    Vector3.new(319.70, 492.38, 344.23),
+    Vector3.new(232.56, 316.38, -144.12),
+    Vector3.new(-610.01, 908.38, -550.30)
+}
+local teleportDelays = {15,10,18,10,38,48}
+
+--// Variabel global
+local running, looping, currentMode, autoRespawn = false,false,nil,true
+local selectedCPMode, teleportCoroutine, statusUpdater, startBtn = nil,nil,nil,nil
+
+--// Fungsi teleport ke posisi
+local function teleportTo(pos)
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char.PrimaryPart
+    if not hrp then return false end
+
+    pcall(function()
+        hrp.AssemblyLinearVelocity = Vector3.zero
+        hrp.AssemblyAngularVelocity = Vector3.zero
+        hrp.Velocity = Vector3.zero
+    end)
+
+    pcall(function()
+        char:SetPrimaryPartCFrame(CFrame.new(pos))
+    end)
+    task.wait()
+    return true
+end
+
+--// Start teleport sesuai mode
+local function startTeleport()
+    local map = {BC=1, CP1=2, CP2=3, CP3=4, CP4=5, CP5=6}
+    local startIndex = map[selectedCPMode] or 1
+
+    repeat
+        for i=startIndex,#teleportList do
+            if not running then break end
+            for t=teleportDelays[i],1,-1 do
+                if not running then break end
+                if statusUpdater then
+    -- 🔥 Tambahan Nizar Loading Bar Block (tidak hapus sistem lain)
+    local total = teleportDelays[i]
+    local filled = math.floor(((total - t) / total) * 10)
+    local bar = string.rep("█", filled) .. string.rep("░", 10 - filled)
+    statusUpdater("Next teleport in: "..t.."s  ["..bar.."]")
+end
+                wait(1)
+            end
+            if not running then break end
+
+            local pos = teleportList[i]
+            if currentMode == "TELEPORT" then
+                local success = teleportTo(pos)
+                if statusUpdater then statusUpdater(success and "Teleported to "..i or "Teleport failed "..i) end
+            else
+                if LocalPlayer.Character and LocalPlayer.Character.PrimaryPart then
+                    local char = LocalPlayer.Character
+                    local oldCFrame = char.PrimaryPart.CFrame
+                    local cam = workspace.CurrentCamera
+                    local camCFrame = cam.CFrame
+                    teleportTo(pos)
+                    task.defer(function()
+                        pcall(function()
+                            char:SetPrimaryPartCFrame(oldCFrame)
+                            cam.CFrame = camCFrame
+                        end)
+                    end)
+                end
+                if statusUpdater then statusUpdater("⚡ GHOIB Quantum Done "..i) end
+            end
+        end
+        wait(0.5)
+    until not looping or not running
+
+    if autoRespawn and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        LocalPlayer.Character.Humanoid.Health = 0
+    end
+
+    running = false
+    if startBtn then
+        startBtn.Text = "🚀 START"
+        startBtn.BackgroundColor3 = Color3.fromRGB(0,120,215)
+    end
+    if statusUpdater then statusUpdater("Status: Idle") end
+end
+
+--// Fungsi buat GUI
+local function createGUI()
+    if PlayerGui:FindFirstChild("JarotXploitGUI_VVIP") then return end
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "JarotXploitGUI_VVIP"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = PlayerGui
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Size = UDim2.new(0,400,0,500)
+    mainFrame.Position = UDim2.new(0.5,-200,0.5,-250)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(35,35,40)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Parent = screenGui
+    Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0,15)
+
+    --// Drag GUI halus (HP & PC)
+    do
+        local dragging, dragInput, mousePos, framePos = false,nil,nil,nil
+        mainFrame.InputBegan:Connect(function(input)
+            if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
+                dragging=true; dragInput=input; mousePos=input.Position; framePos=mainFrame.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState==Enum.UserInputState.End then dragging=false end
+                end)
+            end
+        end)
+        mainFrame.InputChanged:Connect(function(input)
+            if input.UserInputType==Enum.UserInputType.MouseMovement or input.UserInputType==Enum.UserInputType.Touch then
+                dragInput=input
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input==dragInput then
+                local delta=input.Position-mousePos
+                mainFrame.Position=UDim2.new(
+                    framePos.X.Scale, framePos.X.Offset+delta.X,
+                    framePos.Y.Scale, framePos.Y.Offset+delta.Y
+                )
+            end
+        end)
+    end
+
+    -- Header
+    local header = Instance.new("Frame")
+    header.Size=UDim2.new(1,0,0,80)
+    header.BackgroundColor3=Color3.fromRGB(25,25,30)
+    header.BorderSizePixel=0
+    header.Parent=mainFrame
+    Instance.new("UICorner", header).CornerRadius=UDim.new(0,15)
+
+    local logo = Instance.new("ImageLabel")
+    logo.Size=UDim2.new(0,50,0,50)
+    logo.Position=UDim2.new(0,20,0.5,-25)
+    logo.BackgroundTransparency=1
+    logo.Image="rbxassetid://76235443910424"
+    logo.Parent=header
+    Instance.new("UICorner", logo).CornerRadius=UDim.new(0,10)
+
+    local title = Instance.new("TextLabel")
+    title.Size=UDim2.new(1,-90,0,50)
+    title.Position=UDim2.new(0,80,0,15)
+    title.BackgroundTransparency=1
+    title.Text="Jarot Xploit VVIP\nMt YAHAYUK (GHOIB & TP)"
+    title.TextColor3=Color3.fromRGB(255,255,255)
+    title.TextSize=16
+    title.Font=Enum.Font.GothamBold
+    title.TextXAlignment=Enum.TextXAlignment.Left
+    title.TextYAlignment=Enum.TextYAlignment.Top
+    title.Parent=header
+
+    -- Status bar
+    local statusText=Instance.new("TextLabel")
+    statusText.Size=UDim2.new(1,-40,0,35)
+    statusText.Position=UDim2.new(0,20,0,95)
+    statusText.BackgroundColor3=Color3.fromRGB(30,30,35)
+    statusText.Text="⚡ STATUS: READY"
+    statusText.TextColor3=Color3.fromRGB(0,255,0)
+    statusText.TextSize=14
+    statusText.Font=Enum.Font.GothamBold
+    statusText.Parent=mainFrame
+    Instance.new("UICorner",statusText).CornerRadius=UDim.new(0,8)
+
+    statusUpdater=function(text)
+        if statusText and statusText.Parent then
+            statusText.Text=text
+            if string.find(string.lower(text),"fail") or string.find(string.lower(text),"pilih") then
+                statusText.TextColor3=Color3.fromRGB(255,100,100)
+            elseif string.find(string.lower(text),"success") or string.find(string.lower(text),"done") or string.find(string.lower(text),"ready") then
+                statusText.TextColor3=Color3.fromRGB(0,255,0)
+            else
+                statusText.TextColor3=Color3.fromRGB(255,255,255)
+            end
+        end
+    end
+
+    -- Fungsi tombol
+    local function createButton(yPos,text)
+        local btn=Instance.new("TextButton")
+        btn.Size=UDim2.new(1,-40,0,45)
+        btn.Position=UDim2.new(0,20,0,yPos)
+        btn.BackgroundColor3=Color3.fromRGB(0,120,215)
+        btn.Text=text
+        btn.TextColor3=Color3.fromRGB(255,255,255)
+        btn.TextSize=16
+        btn.Font=Enum.Font.GothamBold
+        btn.Parent=mainFrame
+        Instance.new("UICorner",btn).CornerRadius=UDim.new(0,10)
+        return btn
+    end
+
+    startBtn=createButton(270,"🚀 START")
+    local loopBtn=createButton(325,"🔄 AUTO LOOP: OFF")
+    local respawnBtn=createButton(380,"💀 AUTO RESPAWN: ON")
+
+    startBtn.MouseButton1Click:Connect(function()
+        running=not running
+        if running then
+            if not currentMode then
+                statusUpdater("❌ STATUS: Pilih mode dulu!"); running=false; return
+            end
+            startBtn.Text="⏹️ STOP"; startBtn.BackgroundColor3=Color3.fromRGB(220,60,60)
+            teleportCoroutine=coroutine.create(startTeleport)
+            coroutine.resume(teleportCoroutine)
+            statusUpdater((currentMode=="GHOIB") and "👻 STATUS: Starting Ghoib..." or "📍 STATUS: Starting Teleport...")
+        else
+            startBtn.Text="🚀 START"; startBtn.BackgroundColor3=Color3.fromRGB(0,120,215)
+            statusUpdater("⏹️ STATUS: Stopped")
+        end
+    end)
+
+    loopBtn.MouseButton1Click:Connect(function()
+        looping=not looping
+        loopBtn.Text="🔄 AUTO LOOP: "..(looping and "ON" or "OFF")
+    end)
+
+    respawnBtn.MouseButton1Click:Connect(function()
+        autoRespawn=not autoRespawn
+        respawnBtn.Text="💀 AUTO RESPAWN: "..(autoRespawn and "ON" or "OFF")
+    end)
+
+    -- Mode toggle
+    local ghostMode, teleportMode=false,false
+    local ghostBtn, teleportBtn, ghostCircle, teleportCircle
+
+    local function updateToggle()
+        if ghostMode then
+            ghostBtn.BackgroundColor3=Color3.fromRGB(0,170,255)
+            ghostCircle.Position=UDim2.new(1,-27,0.5,-12)
+            teleportBtn.BackgroundColor3=Color3.fromRGB(80,80,85)
+            teleportCircle.Position=UDim2.new(0,3,0.5,-12)
+        elseif teleportMode then
+            teleportBtn.BackgroundColor3=Color3.fromRGB(0,170,255)
+            teleportCircle.Position=UDim2.new(1,-27,0.5,-12)
+            ghostBtn.BackgroundColor3=Color3.fromRGB(80,80,85)
+            ghostCircle.Position=UDim2.new(0,3,0.5,-12)
+        else
+            ghostBtn.BackgroundColor3=Color3.fromRGB(80,80,85)
+            ghostCircle.Position=UDim2.new(0,3,0.5,-12)
+            teleportBtn.BackgroundColor3=Color3.fromRGB(80,80,85)
+            teleportCircle.Position=UDim2.new(0,3,0.5,-12)
+        end
+    end
+
+    local function createToggle(yPos,text,typeName)
+        local toggleFrame=Instance.new("Frame")
+        toggleFrame.Size=UDim2.new(1,-40,0,50)
+        toggleFrame.Position=UDim2.new(0,20,0,yPos)
+        toggleFrame.BackgroundColor3=Color3.fromRGB(50,50,55)
+        toggleFrame.BorderSizePixel=0
+        toggleFrame.Parent=mainFrame
+        Instance.new("UICorner",toggleFrame).CornerRadius=UDim.new(0,8)
+
+        local label=Instance.new("TextLabel")
+        label.Size=UDim2.new(0.7,0,1,0)
+        label.Position=UDim2.new(0,10,0,0)
+        label.BackgroundTransparency=1
+        label.Text=text
+        label.TextColor3=Color3.fromRGB(255,255,255)
+        label.TextSize=14
+        label.Font=Enum.Font.GothamBold
+        label.TextXAlignment=Enum.TextXAlignment.Left
+        label.TextYAlignment=Enum.TextYAlignment.Center
+        label.Parent=toggleFrame
+
+        local toggleBtn=Instance.new("TextButton")
+        toggleBtn.Size=UDim2.new(0,60,0,30)
+        toggleBtn.Position=UDim2.new(1,-70,0.5,-15)
+        toggleBtn.BackgroundColor3=Color3.fromRGB(80,80,85)
+        toggleBtn.Text=""
+        toggleBtn.Parent=toggleFrame
+        Instance.new("UICorner",toggleBtn).CornerRadius=UDim.new(0,15)
+
+        local circle=Instance.new("Frame")
+        circle.Size=UDim2.new(0,24,0,24)
+        circle.Position=UDim2.new(0,3,0.5,-12)
+        circle.BackgroundColor3=Color3.fromRGB(255,255,255)
+        circle.Parent=toggleBtn
+        Instance.new("UICorner",circle).CornerRadius=UDim.new(0,12)
+
+        if typeName=="ghost" then ghostBtn=toggleBtn; ghostCircle=circle
+        elseif typeName=="teleport" then teleportBtn=toggleBtn; teleportCircle=circle end
+
+        toggleBtn.MouseButton1Click:Connect(function()
+            if typeName=="ghost" then
+                if ghostMode then ghostMode=false; currentMode=nil
+                else ghostMode=true; teleportMode=false; currentMode="GHOIB" end
+            elseif typeName=="teleport" then
+                if teleportMode then teleportMode=false; currentMode=nil
+                else teleportMode=true; ghostMode=false; currentMode="TELEPORT" end
+            end
+            updateToggle()
+            if currentMode then statusUpdater("Selected Mode: "..currentMode)
+            else statusUpdater("Selected Mode: NONE") end
+        end)
+    end
+
+    createToggle(145,"👻 MODE GHOIB\nTeleport Tidak Terlihat","ghost")
+    createToggle(205,"📍 MODE TELEPORT\nTeleport Biasa","teleport")
+
+    -- CP selector + scroll system
+    local cpBtn=Instance.new("TextButton")
+    cpBtn.Size=UDim2.new(1,-40,0,40)
+    cpBtn.Position=UDim2.new(0,20,0,440)
+    cpBtn.BackgroundColor3=Color3.fromRGB(0,70,120)
+    cpBtn.Text="MULAI DARI CP PILIHAN"
+    cpBtn.TextColor3=Color3.fromRGB(255,255,255)
+    cpBtn.TextSize=14
+    cpBtn.Font=Enum.Font.GothamBold
+    cpBtn.Parent=mainFrame
+    Instance.new("UICorner", cpBtn).CornerRadius = UDim.new(0,8)
+
+    cpBtn.MouseButton1Click:Connect(function()
+        if screenGui:FindFirstChild("CPSelector") then return end
+        local cpGUI=Instance.new("Frame",screenGui)
+        cpGUI.Name="CPSelector"
+        cpGUI.Size=UDim2.new(0,250,0,280)
+        cpGUI.Position=UDim2.new(0.5,-125,0.5,-140)
+        cpGUI.BackgroundColor3=Color3.fromRGB(0,0,0)
+        cpGUI.BackgroundTransparency=0.2
+        Instance.new("UICorner",cpGUI).CornerRadius=UDim.new(0,12)
+        local stroke=Instance.new("UIStroke",cpGUI)
+        stroke.Color=Color3.fromRGB(0,0,255)
+
+        local scroll = Instance.new("ScrollingFrame", cpGUI)
+        scroll.Size = UDim2.new(1, 0, 1, -35)
+        scroll.Position = UDim2.new(0, 0, 0, 35)
+        scroll.CanvasSize = UDim2.new(0, 0, 0, 500)
+        scroll.ScrollBarThickness = 6
+        scroll.BackgroundTransparency = 1
+
+        local layout = Instance.new("UIListLayout", scroll)
+        layout.Padding = UDim.new(0, 8)
+        layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local title=Instance.new("TextLabel",cpGUI)
+        title.Size=UDim2.new(1,0,0,35)
+        title.Text="Pilih CP Awal"
+        title.TextColor3=Color3.fromRGB(255,255,255)
+        title.Font=Enum.Font.GothamBold
+        title.TextScaled=true
+        title.BackgroundTransparency=1
+
+        local options={"BC","CP1","CP2","CP3","CP4","CP5"}
+        for _,opt in ipairs(options) do
+            local btn=Instance.new("TextButton",scroll)
+            btn.Size=UDim2.new(0,220,0,35)
+            btn.Text=opt
+            btn.BackgroundColor3=Color3.fromRGB(0,70,120)
+            btn.TextColor3=Color3.fromRGB(255,255,255)
+            btn.Font=Enum.Font.GothamBold
+            btn.TextSize=14
+            Instance.new("UICorner",btn).CornerRadius=UDim.new(0,8)
+            btn.MouseButton1Click:Connect(function()
+                selectedCPMode=opt
+                statusUpdater("Selected CP: "..opt)
+                cpGUI:Destroy()
+            end)
+        end
+    end)
+end
+
+createGUI()
